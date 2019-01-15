@@ -125,3 +125,15 @@ class MobileNetV2(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
+    
+    def load_state_dict(self, state_dict):
+        keys = []
+        for key in state_dict:
+            keys.append(key)
+        
+        for key in keys:
+            if key.startswith('module.'):
+                state_dict[key[7:]] = state_dict[key]
+                del state_dict[key]
+        
+        super(MobileNetV2, self).load_state_dict(state_dict)
