@@ -1,5 +1,5 @@
 import torch.nn as nn
-import math
+import torch.nn.functional as F
 
 
 def conv_bn(inp, oup, stride):
@@ -24,7 +24,7 @@ class InvertedResidual(nn.Module):
         self.stride = stride
         assert stride in [1, 2]
 
-        hidden_dim = round(inp * expand_ratio)
+        hidden_dim = int(round(inp * expand_ratio))
         self.use_res_connect = self.stride == 1 and inp == oup
 
         if expand_ratio == 1:
@@ -60,7 +60,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, n_class=1000, input_size=224, width_mult=1.):
+    def __init__(self, n_class=1000, input_size=224, width_mult=1., grayscale=False):
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
@@ -80,7 +80,7 @@ class MobileNetV2(nn.Module):
         assert input_size % 32 == 0
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
-        self.features = [conv_bn(3, input_channel, 2)]
+        self.features = [conv_bn(3 if not grayscale else 1, input_channel, 2)]
         # building inverted residual blocks
         for t, c, n, s in interverted_residual_setting:
             output_channel = int(c * width_mult)
@@ -97,29 +97,31 @@ class MobileNetV2(nn.Module):
 
         # building classifier
         self.classifier = nn.Sequential(
-            nn.Dropout(0.2),
-            nn.Linear(self.last_channel, n_class),
+            nn.Dropout2d(0.2),
+            nn.Conv2d(self.last_channel, n_class, 1)
         )
 
         self._initialize_weights()
 
-    def forward(self, x):
+    def forward(self, x, heatmap=False):
         x = self.features(x)
-        x = x.mean(3).mean(2)
-        x = self.classifier(x)
+        if not heatmap:
+            x = F.adaptive_avg_pool2d(x, (1, 1))
+            x = self.classifier(x).view(x.size(0), -1)
+        else:
+            x = self.classifier(x)
         return x
 
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
+                nn.init.kaiming_normal_(m.weight)
                 if m.bias is not None:
+                    m.weight.data.normal_(0, 0.01)
                     m.bias.data.zero_()
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
-                n = m.weight.size(1)
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
