@@ -59,3 +59,9 @@ val_loader = torch.utils.data.DataLoader(
     batch_size=batch_size, shuffle=False,
     num_workers=n_worker, pin_memory=True)
 ```
+
+## kouyoumin's mod
+### Supports grayscale input
+Set ```grayscale=True``` in constructor to switch on single channel mode
+### Heatmap output
+Set ```heatmap=True``` in forward() to generate heatmap
