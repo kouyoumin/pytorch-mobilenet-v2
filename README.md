@@ -65,3 +65,5 @@ val_loader = torch.utils.data.DataLoader(
 Set ```grayscale=True``` in constructor to switch on single channel mode
 ### Heatmap output
 Set ```heatmap=True``` in forward() to generate heatmap
+### CReLU
+Set ```crelu=True``` in constructor to halve first conv output and double feature maps using CReLU
