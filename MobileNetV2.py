@@ -188,5 +188,8 @@ class MobileNetV2(nn.Module):
             for key in keys:
                 if key.startswith('classifier.'):
                     del state_dict[key]
+
+        if strict and transfer:
+            print('load_state_dict warning: strict must be False when transfer is True')
         
-        super(MobileNetV2, self).load_state_dict(state_dict, strict=strict)
+        super(MobileNetV2, self).load_state_dict(state_dict, strict=(strict and not transfer))
